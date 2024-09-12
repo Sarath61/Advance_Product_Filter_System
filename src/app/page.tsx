@@ -4,7 +4,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@radix-ui/react-dropdown-menu";
-import { ChevronDown, Filter } from "lucide-react";
+import { ChevronDown, Filter, Sidebar } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
@@ -20,6 +20,7 @@ import {
 } from "../components/ui/accordion";
 import { AccordionContent } from "@radix-ui/react-accordion";
 import { ProductState } from "@/lib/validators/product-validators";
+import { Slider } from "../components/ui/slider";
 const SORT_OPTIONS = [
   {
     name: "None",
@@ -124,6 +125,9 @@ export default function Home() {
       }));
     }
   };
+
+  const minPrice = Math.min(filter.price.range[0], filter.price.range[1]);
+  const maxPrice = Math.max(filter.price.range[0], filter.price.range[1]);
 
   return (
     <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -276,17 +280,61 @@ export default function Home() {
                             filter.price.range[0] === option.value[0] &&
                             filter.price.range[1] === option.value[1]
                           }
-                          id={`size-${optionIdx}`}
+                          id={`price-${optionIdx}`}
                           className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                         />
                         <label
-                          htmlFor={`size-${optionIdx}`}
+                          htmlFor={`price-${optionIdx}`}
                           className="ml-3 text-sm text-gray-600"
                         >
                           {option.label}
                         </label>
                       </li>
                     ))}
+                    <li className="flex justify-center flex-col gap-2">
+                      <div>
+                        <input
+                          type="radio"
+                          onChange={() => {
+                            setFilter((prev) => ({
+                              ...prev,
+                              price: {
+                                isCustom: true,
+                                range: [0, 100],
+                              },
+                            }));
+                          }}
+                          checked={filter.price.isCustom}
+                          id={`price-${PRICE_FILTER.options.length}`}
+                          className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <label
+                          htmlFor={`price-${PRICE_FILTER.options.length}`}
+                          className="ml-3 text-sm text-gray-600"
+                        >
+                          custom
+                        </label>
+                      </div>
+                      <div className="flex justify-between">
+                        <p className="font-medium">Price</p>
+                        <div>
+                          $
+                          {filter.price.isCustom
+                            ? minPrice.toFixed(0)
+                            : filter.price.range[0].toFixed(0)}
+                          - $
+                          {filter.price.isCustom
+                            ? maxPrice.toFixed(0)
+                            : filter.price.range[1].toFixed(0)}
+                        </div>
+                      </div>
+
+                      <Slider
+                        className={cn({
+                          "opacity-50": !filter.price.isCustom,
+                        })}
+                      ></Slider>
+                    </li>
                   </ul>
                 </AccordionContent>
               </AccordionItem>
