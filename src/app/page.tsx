@@ -5,7 +5,7 @@ import {
   DropdownMenuTrigger,
 } from "@radix-ui/react-dropdown-menu";
 import { ChevronDown, Filter, Sidebar } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
@@ -21,6 +21,9 @@ import {
 import { AccordionContent } from "@radix-ui/react-accordion";
 import { ProductState } from "@/lib/validators/product-validators";
 import { Slider } from "../components/ui/slider";
+import debounce from "lodash.debounce";
+import EmptyState from "@/components/Products/EmptyState";
+
 const SORT_OPTIONS = [
   {
     name: "None",
@@ -90,7 +93,8 @@ export default function Home() {
     size: ["M", "L", "S"],
     sort: "none",
   });
-  const { data: products } = useQuery({
+
+  const { data: products, refetch } = useQuery({
     queryKey: ["products"],
     queryFn: async () => {
       const { data } = await axios.post<QueryResult<TProduct>[]>(
@@ -99,7 +103,7 @@ export default function Home() {
           filter: {
             sort: filter.sort,
             color: filter.color,
-            price: filter.price,
+            price: filter.price.range,
             size: filter.size,
           },
         }
@@ -107,6 +111,11 @@ export default function Home() {
       return data;
     },
   });
+
+  const onSubmit = () => refetch();
+
+  const debouncedSubmit = debounce(onSubmit, 400);
+  const _debouncedSubmit = useCallback(debouncedSubmit, []);
 
   const applyArrayFilter = ({
     category,
@@ -116,6 +125,7 @@ export default function Home() {
     value: string;
   }) => {
     const isFilterApplied = filter[category].includes(value as never);
+
     if (isFilterApplied) {
       setFilter((prev) => ({
         ...prev,
@@ -127,6 +137,7 @@ export default function Home() {
         [category]: [...prev[category], value],
       }));
     }
+    _debouncedSubmit();
   };
 
   const minPrice = Math.min(filter.price.range[0], filter.price.range[1]);
@@ -147,7 +158,7 @@ export default function Home() {
               Sort
               <ChevronDown className="-mr-1 ml-1 h-5 w-5 flex-shrink-0 text-gray-400 group-hover:text-gray-500" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="bg-white rounded-lg">
               {SORT_OPTIONS.map((option) => (
                 <button
                   key={option.name}
@@ -160,6 +171,7 @@ export default function Home() {
                       ...prev,
                       sort: option.value,
                     }));
+                    _debouncedSubmit();
                   }}
                 >
                   {option.name}
@@ -279,6 +291,7 @@ export default function Home() {
                                 range: [...option.value],
                               },
                             }));
+                            _debouncedSubmit();
                           }}
                           checked={
                             !filter.price.isCustom &&
@@ -308,6 +321,7 @@ export default function Home() {
                                 range: [0, 100],
                               },
                             }));
+                            _debouncedSubmit();
                           }}
                           checked={filter.price.isCustom}
                           id={`price-${PRICE_FILTER.options.length}`}
@@ -348,6 +362,8 @@ export default function Home() {
                               range: [newMin, newMax],
                             },
                           }));
+
+                          _debouncedSubmit();
                         }}
                         value={
                           filter.price.isCustom
@@ -367,13 +383,17 @@ export default function Home() {
           </div>
           {/* {product} */}
           <ul className="lg:col-span-3  grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
-            {products
-              ? products.map((product) => (
-                  <Product key={product.id} product={product.metadata!} />
-                ))
-              : new Array(12)
-                  .fill(null)
-                  .map((_, i) => <ProductSkeleton key={i} />)}
+            {products && products.length === 0 ? (
+              <EmptyState />
+            ) : products ? (
+              products.map((product) => (
+                <Product key={product.id} product={product.metadata!} />
+              ))
+            ) : (
+              new Array(12)
+                .fill(null)
+                .map((_, i) => <ProductSkeleton key={i} />)
+            )}
           </ul>
         </div>
       </section>
